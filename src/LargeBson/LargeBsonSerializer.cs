@@ -2,9 +2,10 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-
+[assembly: InternalsVisibleTo("LargeBsonTests")]
 namespace LargeBson
 {
     public static class LargeBsonSerializer
@@ -18,8 +19,6 @@ namespace LargeBson
         {
             return BsonReader.Deserialize(s, t);
         }
-        
-        
     }
 
 

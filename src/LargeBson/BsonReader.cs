@@ -18,7 +18,8 @@ namespace LargeBson
             {
                 await s.CopyToAsync(ms);
                 ms.Position = 0;
-                var (res, r) = await DeserializeWrapped(new Context(ms), type, false);
+                using var ctx = new Context(ms);
+                var (res, r) = await DeserializeWrapped(ctx, type, false);
                 success = true;
                 return new DeserializedBson(res, ms);
             }
@@ -33,18 +34,20 @@ namespace LargeBson
         {
             if (!s.CanSeek)
                 throw new InvalidOperationException();
-            return (await DeserializeWrapped(new Context(s), type, false)).res;
+            using var ctx = new Context(s);
+            return (await DeserializeWrapped(ctx, type, false)).res;
         }
         
-        class Context
+        class Context : IDisposable
         {
             public byte[] Buffer = new byte[64];
-            public AsyncLock Lock = new AsyncLock();
+            public SharedStreamHandler Share;
             public Stream Stream;
 
             public Context(Stream stream)
             {
                 Stream = stream;
+                Share = new SharedStreamHandler(stream);
             }
 
             public async ValueTask ReadExact(byte[] buffer, int length)
@@ -98,6 +101,11 @@ namespace LargeBson
             {
                 await ReadExact(Buffer, 16);
                 return new Guid(Buffer.AsSpan().Slice(0, 16));
+            }
+
+            public void Dispose()
+            {
+                Share.DisposeIfNoRefs();
             }
         }
 
@@ -198,7 +206,7 @@ namespace LargeBson
                     
                     if (prop.Type == typeof(Stream))
                     {
-                        var slice = new StreamSlice(ctx.Stream, ctx.Stream.Position, blen, ctx.Lock);
+                        var slice = new StreamSlice(ctx.Stream, ctx.Stream.Position, blen, ctx.Share);
                         ctx.Stream.Position += blen;
                         prop.Set(targetObject, slice);
                         totalLen -= blen;

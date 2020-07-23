@@ -6,6 +6,54 @@ using NeoSmart.AsyncLock;
 
 namespace LargeBson
 {
+
+    class SharedStreamHandler
+    {
+        public Stream Stream { get; }
+        public AsyncLock Lock { get; } = new AsyncLock();
+        private int _refc;
+        public SharedStreamHandler(Stream stream)
+        {
+            Stream = stream;
+        }
+
+        class Disposable : IDisposable
+        {
+            private SharedStreamHandler _parent;
+            private readonly object _l = new object();
+            public Disposable(SharedStreamHandler parent)
+            {
+                _parent = parent;
+            }
+
+            public void Dispose()
+            {
+                lock (_l)
+                {
+                    if (_parent != null)
+                    {
+                        var p = _parent;
+                        _parent = null;
+                        if (Interlocked.Decrement(ref p._refc) == 0)
+                            p.Stream.Dispose();
+                    }
+                }
+            }
+        }
+        
+        public IDisposable AddRef()
+        {
+            Interlocked.Increment(ref _refc);
+            return new Disposable(this);
+        }
+
+        public void DisposeIfNoRefs()
+        {
+            if (_refc == 0)
+                Stream.Dispose();
+        }
+    }
+    
     class StreamSlice : Stream
     {
         private readonly Stream _inner;
@@ -13,13 +61,15 @@ namespace LargeBson
         private readonly long _len;
         private readonly AsyncLock _l;
         private long _position;
+        private IDisposable _disp;
 
-        public StreamSlice(Stream inner, long from, long len, AsyncLock l)
+        public StreamSlice(Stream inner, long from, long len, SharedStreamHandler share)
         {
             _inner = inner;
             _from = @from;
             _len = len;
-            _l = l;
+            _l = share.Lock;
+            _disp = share.AddRef();
         }
 
         public override void Flush() => throw new NotSupportedException();
@@ -117,6 +167,18 @@ namespace LargeBson
                     throw new ArgumentException();
                 _position = value;
             }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            _disp.Dispose();
+            base.Dispose(disposing);
+        }
+
+        public override void Close()
+        {
+            _disp.Dispose();
+            base.Close();
         }
     }
 }

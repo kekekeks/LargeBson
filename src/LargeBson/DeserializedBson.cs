@@ -1,21 +1,22 @@
 using System;
+using System.IO;
 
 namespace LargeBson
 {
     public class DeserializedBson : IDisposable
     {
         public object Data { get; }
-        private readonly IDisposable _innerStream;
+        internal Stream InnerStream;
 
-        internal DeserializedBson(object data, IDisposable innerStream)
+        internal DeserializedBson(object data, Stream innerStream)
         {
             Data = data;
-            _innerStream = innerStream;
+            InnerStream = innerStream;
         }
         
         public void Dispose()
         {
-            _innerStream.Dispose();
+            InnerStream.Dispose();
         }
     }
 }
