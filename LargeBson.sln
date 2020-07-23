@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{EF196D11-739F-46CA-8FE0-4AD2DCA8D5EE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B5D60A9E-4A41-483C-8CD9-EA8E80236A40}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LargeBson", "src\LargeBson\LargeBson.csproj", "{ACA90A85-71EC-4D79-A74B-92E4CD425CBC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LargeBsonTests", "tests\LargeBsonTests\LargeBsonTests.csproj", "{9D976DE1-2524-4A87-AEFA-AB73E338CD06}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ACA90A85-71EC-4D79-A74B-92E4CD425CBC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACA90A85-71EC-4D79-A74B-92E4CD425CBC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACA90A85-71EC-4D79-A74B-92E4CD425CBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACA90A85-71EC-4D79-A74B-92E4CD425CBC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D976DE1-2524-4A87-AEFA-AB73E338CD06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D976DE1-2524-4A87-AEFA-AB73E338CD06}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D976DE1-2524-4A87-AEFA-AB73E338CD06}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D976DE1-2524-4A87-AEFA-AB73E338CD06}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{ACA90A85-71EC-4D79-A74B-92E4CD425CBC} = {B5D60A9E-4A41-483C-8CD9-EA8E80236A40}
+		{9D976DE1-2524-4A87-AEFA-AB73E338CD06} = {EF196D11-739F-46CA-8FE0-4AD2DCA8D5EE}
+	EndGlobalSection
+EndGlobal
