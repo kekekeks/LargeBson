@@ -18,7 +18,7 @@ namespace LargeBson
         public bool IsBsonArray { get; }
         private IToArrayConverter _toArrayConverter;
         public Type Type { get; }
-        public TypeInformation(Type t)
+        public TypeInformation(Type t, LargeBsonSettings settings)
         {
             Type = t;
             Properties = new PropertyInfo[0];
@@ -55,7 +55,7 @@ namespace LargeBson
                     ListOfElementType = t;
                 }
                 else
-                    Properties = t.GetProperties().Select(p => new PropertyInfo(p)).ToList();
+                    Properties = t.GetProperties().Select(p => new PropertyInfo(p, settings)).ToList();
             }
         }
         
@@ -95,12 +95,19 @@ namespace LargeBson
 
     class TypeInfoCache
     {
+        private readonly LargeBsonSettings _settings;
+
+        public TypeInfoCache(LargeBsonSettings settings)
+        {
+            _settings = settings;
+        }
+        
         readonly ConcurrentDictionary<Type, TypeInformation> _dic = new ConcurrentDictionary<Type, TypeInformation>();
         public TypeInformation Get(Type t)
         {
             if (_dic.TryGetValue(t, out var rv))
                 return rv;
-            return _dic[t] = new TypeInformation(t);
+            return _dic[t] = new TypeInformation(t, _settings);
         }
     }
 

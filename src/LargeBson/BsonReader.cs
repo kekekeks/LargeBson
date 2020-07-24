@@ -210,8 +210,7 @@ namespace LargeBson
                         totalLen -= 16;
                         writer.WriteValue(guid);
                     }
-                    
-                    if (writer.CurrentPropertyType == typeof(Stream))
+                    else if (writer.CurrentPropertyType == typeof(Stream))
                     {
                         var slice = new StreamSlice(ctx.Stream, ctx.Stream.Position, blen, ctx.Share);
                         ctx.Stream.Position += blen;

@@ -12,9 +12,9 @@ namespace LargeBson
         private Action<object, object> _setter;
         public string Name { get; }
         public byte[] CstringName { get; }
-        public PropertyInfo(System.Reflection.PropertyInfo prop)
+        public PropertyInfo(System.Reflection.PropertyInfo prop, LargeBsonSettings settings)
         {
-            Name = prop.Name;
+            Name = settings?.PropertyNameResolver?.Invoke(prop) ?? prop.Name;
             CstringName = Encoding.UTF8.GetBytes(Name).Concat(new byte[] {0}).ToArray();
             
             var obj = Expression.Parameter(typeof(object), "obj");

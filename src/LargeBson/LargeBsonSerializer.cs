@@ -12,10 +12,11 @@ namespace LargeBson
 {
     public class LargeBsonSerializer
     {
-        private readonly TypeInfoCache _typeInfoCache = new TypeInfoCache();
+        private readonly TypeInfoCache _typeInfoCache;
 
-        public LargeBsonSerializer()
+        public LargeBsonSerializer(LargeBsonSettings settings = null)
         {
+            _typeInfoCache = new TypeInfoCache(settings ?? new LargeBsonSettings());
         }
         
         public Stream Serialize(object data)
