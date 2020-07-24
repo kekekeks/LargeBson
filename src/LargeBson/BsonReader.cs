@@ -19,7 +19,7 @@ namespace LargeBson
                 await s.CopyToAsync(ms);
                 ms.Position = 0;
                 using var ctx = new Context(ms);
-                var (res, r) = await DeserializeWrapped(ctx, type, false);
+                var (res, r) = await DeserializeCore(ctx, type, false);
                 success = true;
                 return new DeserializedBson(res, ms);
             }
@@ -35,7 +35,7 @@ namespace LargeBson
             if (!s.CanSeek)
                 throw new InvalidOperationException();
             using var ctx = new Context(s);
-            return (await DeserializeWrapped(ctx, type, false)).res;
+            return (await DeserializeCore(ctx, type, false)).res;
         }
         
         class Context : IDisposable
@@ -124,23 +124,14 @@ namespace LargeBson
 
 
         private static readonly ArrayPool<byte> Pool = ArrayPool<byte>.Shared;
-
-        static async ValueTask<(object res, int read)> DeserializeWrapped(Context ctx, Type t, bool array)
-        {
-            return await DeserializeCore(ctx, t, array);
-        }
+        
         static async ValueTask<(object res, int read)> DeserializeCore(Context ctx, Type t, bool array)
         {
-            List<object> targetList = null;
-            object targetObject = null;
-            TypePropertyList typeInfo = null;
-            if (array)
-                targetList = new List<object>();
-            else
-            {
-                targetObject = Activator.CreateInstance(t);
-                typeInfo = TypePropertyList.Get(t);
-            }
+            var nfo = TypeInformation.Get(t);
+            if (nfo.IsBsonArray != array)
+                throw new InvalidOperationException("Attempted to read object as array or vice versa");
+
+            var writer = nfo.CreateWriteAdapter();
 
             var expectedLen = await ctx.ReadInt();
             var totalLen = expectedLen - 4;
@@ -152,27 +143,26 @@ namespace LargeBson
                 var name = await ctx.ReadCString();
                 totalLen -= name.Count;
 
-                var prop = typeInfo?.GetProperty(name);
-
+                writer.SelectProperty(name);
                 if (type == BsonType.Int32)
                 {
                     var i = await ctx.ReadInt();
                     totalLen -= 4;
-                    Add(targetList, targetObject, prop, name, i);
+                    writer.WriteValue(i);
                 }
                 else if (type == BsonType.Int64)
                 {
                     var i = await ctx.ReadLong();
                     totalLen -= 8;
-                    Add(targetList, targetObject, prop, name, i);
+                    writer.WriteValue(i);
                 }
                 else if (type == BsonType.Null)
-                    Add(targetList, targetObject, prop, name, null);
+                    writer.WriteValue(null);
                 else if (type == BsonType.Boolean)
                 {
                     var b = await ctx.ReadByte() != 0;
                     totalLen--;
-                    Add(targetList, targetObject, prop, name, b);
+                    writer.WriteValue(b);
                 }
                 else if (type == BsonType.String)
                 {
@@ -190,17 +180,13 @@ namespace LargeBson
                     }
 
                     var s = Encoding.UTF8.GetString(pooled, 0, slen - 1);
-                    Add(targetList, targetObject, prop, name, s);
+                    writer.WriteValue(s);
                 }
-                else if (type == BsonType.Array)
+                else if (type == BsonType.Array || type == BsonType.Object)
                 {
-                    throw new ArgumentException("Array deserialization is not supported yet");
-                }
-                else if (type == BsonType.Object)
-                {
-                    var (res, read) = await DeserializeCore(ctx, prop.Type, false);
+                    var (res, read) = await DeserializeCore(ctx, writer.CurrentPropertyType, type == BsonType.Array);
                     totalLen -= read;
-                    prop.Set(targetObject, res);
+                    writer.WriteValue(res);
                 }
                 else if (type == BsonType.Binary)
                 {
@@ -214,28 +200,28 @@ namespace LargeBson
                             throw new ArgumentException("Invalid GUID size: " + blen);
                         var guid = await ctx.ReadGuid();
                         totalLen -= 16;
-                        Add(targetList, targetObject, prop, name, guid);
+                        writer.WriteValue(guid);
                     }
                     
-                    if (prop.Type == typeof(Stream))
+                    if (writer.CurrentPropertyType == typeof(Stream))
                     {
                         var slice = new StreamSlice(ctx.Stream, ctx.Stream.Position, blen, ctx.Share);
                         ctx.Stream.Position += blen;
-                        prop.Set(targetObject, slice);
+                        writer.WriteValue(slice);
                         totalLen -= blen;
                         //
                     }
-                    else if (prop.Type == typeof(byte[]))
+                    else if (writer.CurrentPropertyType == typeof(byte[]))
                     {
                         if (blen > 0x10000)
                             throw new ArgumentException("byte[] blob is too large");
                         var data = new byte[blen];
                         await ctx.ReadExact(data, blen);
                         totalLen -= blen;
-                        Add(targetList, targetObject, prop, name, data);
+                        writer.WriteValue(data);
 
                     }
-                    else if(prop.Type == typeof(IMemoryOwner<byte>))
+                    else if(writer.CurrentPropertyType == typeof(IMemoryOwner<byte>))
                     {
                         var mem = MemoryPool<byte>.Shared.Rent(blen);
                         var rsuccess = false;
@@ -251,9 +237,10 @@ namespace LargeBson
                         }
 
                         totalLen -= blen;
+                        writer.WriteValue(mem);
                     }
                     else
-                        throw new ArgumentException("Unable to deserialize binary to " + prop.Type);
+                        throw new ArgumentException("Unable to deserialize binary to " + writer.CurrentPropertyType);
                 }
                 else
                     throw new ArgumentException("Unsupported BSON type " + type);
@@ -261,7 +248,7 @@ namespace LargeBson
 
             if (totalLen != 1 || await ctx.ReadByte() != 0)
                 throw new ArgumentException("Unexpected length of object");
-            return (targetObject, expectedLen);
+            return (writer.CreateInstance(), expectedLen);
         }
 
         private static void Add(List<object> targetList, object targetObject, PropertyInfo propertyInfo,

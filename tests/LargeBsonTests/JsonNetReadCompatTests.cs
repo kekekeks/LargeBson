@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using LargeBson;
@@ -13,7 +14,10 @@ namespace LargeBsonTests
         public class Model
         {
             public Model SubModel { get; set; }
+            public List<Model> ModelList { get; set; }
             public int TestInt { get; set; }
+            public List<int> IntList { get; set; }
+            public int[] IntArray { get; set; }
             public long TestLong { get; set; }
             public string TestString { get; set; }
             public byte[] TestBytes { get; set; }
@@ -60,7 +64,16 @@ namespace LargeBsonTests
                 TestStream = new MemoryStream(new byte[] {3, 2, 1, 0}),
                 TestInt = 12340,
                 TestLong = 123450,
-                TestString = "testtesttest"
+                TestString = "testtesttest",
+                IntList = new List<int> {1, 2, 3, 4, 5},
+                IntArray = new int[] {5, 4, 3, 2, 1},
+                ModelList = new List<Model>
+                {
+                    new Model
+                    {
+                        TestInt = 123
+                    }
+                }
 
             });
         }

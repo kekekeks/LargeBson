@@ -133,7 +133,7 @@ namespace LargeBson
 
             public BsonDocument(object value)
             {
-                var t = TypePropertyList.Get(value.GetType());
+                var t = TypeInformation.Get(value.GetType());
                 foreach (var p in t.Properties)
                     if (p.CanRead)
                     {
