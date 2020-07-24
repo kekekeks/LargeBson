@@ -31,7 +31,7 @@ namespace LargeBsonTests
         {
             var m = new Mem(new byte[] {1, 2, 3});
             Assert.False(m.Disposed);
-            var bsonStream = LargeBsonSerializer.Serialize(new
+            var bsonStream = new LargeBsonSerializer().Serialize(new
             {
                 Data = m
             });
@@ -48,7 +48,7 @@ namespace LargeBsonTests
         {
             var m = new Mem(new byte[] {1, 2, 3});
             Assert.False(m.Disposed);
-            var bsonStream = LargeBsonSerializer.Serialize(new
+            var bsonStream = new LargeBsonSerializer().Serialize(new
             {
                 Data = m
             });

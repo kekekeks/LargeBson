@@ -58,15 +58,7 @@ namespace LargeBson
                     Properties = t.GetProperties().Select(p => new PropertyInfo(p)).ToList();
             }
         }
-
-        static ConcurrentDictionary<Type, TypeInformation> Dic = new ConcurrentDictionary<Type, TypeInformation>();
-        public static TypeInformation Get(Type t)
-        {
-            if (Dic.TryGetValue(t, out var rv))
-                return rv;
-            return Dic[t] = new TypeInformation(t);
-        }
-
+        
         public PropertyInfo GetProperty(in ArraySegment<byte> name)
         {
             foreach (var p in Properties)
@@ -98,6 +90,17 @@ namespace LargeBson
             if (ListOfElementType != null)
                 return new WriteAdapter(this, (IList) Activator.CreateInstance(ListOfElementType), _toArrayConverter);
             return new WriteAdapter(this, Activator.CreateInstance(Type));
+        }
+    }
+
+    class TypeInfoCache
+    {
+        readonly ConcurrentDictionary<Type, TypeInformation> _dic = new ConcurrentDictionary<Type, TypeInformation>();
+        public TypeInformation Get(Type t)
+        {
+            if (_dic.TryGetValue(t, out var rv))
+                return rv;
+            return _dic[t] = new TypeInformation(t);
         }
     }
 

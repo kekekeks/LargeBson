@@ -41,7 +41,7 @@ namespace LargeBsonTests
             var serializedOriginal = JsonNetSerialize(o);
 
             serializedOriginal.Position = 0;
-            var deserialized = LargeBsonSerializer.Deserialize(serializedOriginal, o.GetType()).Result;
+            var deserialized = new LargeBsonSerializer().Deserialize(serializedOriginal, o.GetType()).Result;
 
             var check = JsonNetSerialize(deserialized.Data);
             Assert.True(serializedOriginal.ToArray().SequenceEqual(check.ToArray()));

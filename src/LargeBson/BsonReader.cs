@@ -4,21 +4,25 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.IO;
 using NeoSmart.AsyncLock;
 
 namespace LargeBson
 {
     internal class BsonReader
     {
-        public static async ValueTask<DeserializedBson> Deserialize(Stream s, Type type)
+        static readonly RecyclableMemoryStreamManager StreamPool = new RecyclableMemoryStreamManager();
+        public static async ValueTask<DeserializedBson> Deserialize(Stream s, Type type,
+            TypeInfoCache typeInfoCache,
+            RecyclableMemoryStreamManager streamPool = null)
         {
-            var ms = new MemoryStream();
+            var ms = new RecyclableMemoryStream(streamPool ?? StreamPool);
             var success = false;
             try
             {
                 await s.CopyToAsync(ms);
                 ms.Position = 0;
-                using var ctx = new Context(ms);
+                using var ctx = new Context(ms, typeInfoCache);
                 var (res, r) = await DeserializeCore(ctx, type, false);
                 success = true;
                 return new DeserializedBson(res, ms);
@@ -30,11 +34,11 @@ namespace LargeBson
             }
         }
 
-        public static async ValueTask<object> DeserializeInPlace(Stream s, Type type)
+        public static async ValueTask<object> DeserializeInPlace(Stream s, Type type, TypeInfoCache typeInfoCache)
         {
             if (!s.CanSeek)
                 throw new InvalidOperationException();
-            using var ctx = new Context(s);
+            using var ctx = new Context(s, typeInfoCache);
             return (await DeserializeCore(ctx, type, false)).res;
         }
         
@@ -43,12 +47,16 @@ namespace LargeBson
             public byte[] Buffer = new byte[64];
             public SharedStreamHandler Share;
             public Stream Stream;
+            private readonly TypeInfoCache _typeInfoCache;
 
-            public Context(Stream stream)
+            public Context(Stream stream, TypeInfoCache typeInfoCache)
             {
                 Stream = stream;
+                _typeInfoCache = typeInfoCache;
                 Share = new SharedStreamHandler(stream);
             }
+
+            public TypeInformation GetType(Type t) => _typeInfoCache.Get(t);
 
             public async ValueTask ReadExact(byte[] buffer, int length)
             {
@@ -127,7 +135,7 @@ namespace LargeBson
         
         static async ValueTask<(object res, int read)> DeserializeCore(Context ctx, Type t, bool array)
         {
-            var nfo = TypeInformation.Get(t);
+            var nfo = ctx.GetType(t);
             if (nfo.IsBsonArray != array)
                 throw new InvalidOperationException("Attempted to read object as array or vice versa");
 

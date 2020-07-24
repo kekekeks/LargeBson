@@ -34,7 +34,7 @@ namespace LargeBsonTests
             for (var c = 0; c < 2; c++)
             {
                 ms = new MemoryStream();
-                using (var s = LargeBsonSerializer.Serialize(lb()))
+                using (var s = new LargeBsonSerializer().Serialize(lb()))
                     if (c == 0)
                         s.CopyTo(ms);
                     else

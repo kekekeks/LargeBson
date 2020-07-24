@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 namespace LargeBson
@@ -11,9 +12,22 @@ namespace LargeBson
     static class BsonBuilder
     {
 
-        public static Stream Build(object value)
+        class Context
         {
-            var root = BuildDocument(value);
+            public TypeInfoCache TypeInfoCache;
+
+            public Context(TypeInfoCache typeInfoCache)
+            {
+                TypeInfoCache = typeInfoCache;
+            }
+
+            public TypeInformation GetType(Type t) => TypeInfoCache.Get(t);
+        }
+        
+        public static Stream Build(object value, TypeInfoCache typeInfoCache)
+        {
+            var ctx = new Context(typeInfoCache);
+            var root = BuildDocument(value, ctx);
             var hs = new HashSet<IDisposable>();
             CollectDisposableStreams(hs, BsonToken.FromDocument(root));
             return new BsonStream(root.Length, BuildChunks(root).GetEnumerator(), hs.ToList());
@@ -117,12 +131,12 @@ namespace LargeBson
 
         }
         
-        static BsonDocument BuildDocument(object value)
+        static BsonDocument BuildDocument(object value, Context ctx)
         {
             if (value is IEnumerable || value == null || value is string || value.GetType().IsPrimitive ||
                 value is Guid)
                 throw new InvalidOperationException();
-            return new BsonDocument(value);
+            return new BsonDocument(value, ctx);
         }
         
         
@@ -131,13 +145,13 @@ namespace LargeBson
             public int Length;
             public List<BsonProperty> Properties = new List<BsonProperty>();
 
-            public BsonDocument(object value)
+            public BsonDocument(object value, Context ctx)
             {
-                var t = TypeInformation.Get(value.GetType());
+                var t = ctx.GetType(value.GetType());
                 foreach (var p in t.Properties)
                     if (p.CanRead)
                     {
-                        var prop = new BsonProperty(p.CstringName, BsonToken.Create(p.Get(value)));
+                        var prop = new BsonProperty(p.CstringName, BsonToken.Create(p.Get(value), ctx));
                         Properties.Add(prop);
                         Length += prop.Length;
                     }
@@ -217,11 +231,11 @@ namespace LargeBson
 
             }
             
-            public static BsonArray FromEnumerable(IEnumerable en)
+            public static BsonArray FromEnumerable(IEnumerable en, Context ctx)
             {
                 var lst = new List<BsonToken>();
                 foreach (var e in en)
-                    lst.Add(BsonToken.Create(e));
+                    lst.Add(BsonToken.Create(e, ctx));
                 return new BsonArray(lst);
             }
         }
@@ -258,7 +272,7 @@ namespace LargeBson
             public bool Boolean;
 
 
-            public static BsonToken Create(object value)
+            public static BsonToken Create(object value, Context ctx)
             {
                 if (value == null)
                     return BsonToken.Null;
@@ -283,8 +297,8 @@ namespace LargeBson
                 if (t.IsPrimitive)
                     throw new InvalidOperationException();
                 if (value is IEnumerable en)
-                    return BsonToken.FromArray(BsonArray.FromEnumerable(en));
-                return FromDocument(new BsonDocument(value));
+                    return BsonToken.FromArray(BsonArray.FromEnumerable(en, ctx));
+                return FromDocument(new BsonDocument(value, ctx));
 
             }
             

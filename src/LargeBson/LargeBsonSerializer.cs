@@ -5,19 +5,27 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.IO;
+
 [assembly: InternalsVisibleTo("LargeBsonTests")]
 namespace LargeBson
 {
-    public static class LargeBsonSerializer
+    public class LargeBsonSerializer
     {
-        public static Stream Serialize(object data)
+        private readonly TypeInfoCache _typeInfoCache = new TypeInfoCache();
+
+        public LargeBsonSerializer()
         {
-            return BsonBuilder.Build(data);
+        }
+        
+        public Stream Serialize(object data)
+        {
+            return BsonBuilder.Build(data, _typeInfoCache);
         }
 
-        public static ValueTask<DeserializedBson> Deserialize(Stream s, Type t)
+        public ValueTask<DeserializedBson> Deserialize(Stream s, Type t, RecyclableMemoryStreamManager streamPool = null)
         {
-            return BsonReader.Deserialize(s, t);
+            return BsonReader.Deserialize(s, t, _typeInfoCache, streamPool);
         }
     }
 
