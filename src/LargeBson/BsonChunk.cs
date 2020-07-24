@@ -11,6 +11,7 @@ namespace LargeBson
     {
         private int _arrayLength;
         private Stream _stream;
+        private IMemoryOwner<byte> _memory;
         private byte[] _array;
         private int _offset;
         private fixed byte _fixed[16];
@@ -18,27 +19,26 @@ namespace LargeBson
         
         private ArrayPool<byte> _pool;
 
-        public BsonChunk(Stream stream)
+        public BsonChunk(Stream stream) : this()
         {
             _stream = stream;
-            _arrayLength = 0;
-            _array = null;
-            _offset = 0;
-            _pool = null;
-            _isFixed = false;
         }
 
-        public BsonChunk(byte[] data, ArrayPool<byte> pool = null, int offset = 0, int? length = null)
+        public BsonChunk(IMemoryOwner<byte> memory) : this()
+        {
+            _memory = memory;
+        }
+
+        
+        public BsonChunk(byte[] data, ArrayPool<byte> pool = null, int offset = 0, int? length = null) : this()
         {
             _arrayLength = length ?? data.Length;
-            _stream = null;
             _array = data;
             _offset = offset;
             _pool = pool;
-            _isFixed = false;
         }
 
-        public BsonChunk(void* ptr, int len)
+        public BsonChunk(void* ptr, int len) : this()
         {
             if (len > 16)
                 throw new ArgumentException();
@@ -47,11 +47,6 @@ namespace LargeBson
                 _fixed[c] = s[c];
             _isFixed = true;
             _arrayLength = len;
-
-            _stream = null;
-            _array = null;
-            _offset = 0;
-            _pool = null;
         }
 
         public BsonChunk(int value) : this(&value, 4)
@@ -102,6 +97,15 @@ namespace LargeBson
             if (_stream != null)
                 return _stream.Read(buffer, offset, count);
 
+            if (_memory != null)
+            {
+                var mem = _memory.Memory.Slice(_offset);
+                read = Math.Min(mem.Length, count);
+                mem.CopyTo(new Memory<byte>(buffer, offset, read));
+                _offset += read;
+                return read;
+            }
+            
             return 0;
         }
 
@@ -143,6 +147,15 @@ namespace LargeBson
 
             if (_stream != null)
                 return _stream.Read(buffer);
+            
+            if (_memory != null)
+            {
+                var mem = _memory.Memory.Slice(_offset);
+                read = Math.Min(mem.Length, count);
+                mem.Span.CopyTo(buffer);
+                _offset += read;
+                return read;
+            }
 
             return 0;
         }
@@ -167,6 +180,12 @@ namespace LargeBson
             {
                 _pool.Return(_array);
                 _pool = null;
+            }
+
+            if (_memory != null)
+            {
+                _memory.Dispose();
+                _memory = null;
             }
         }
     }

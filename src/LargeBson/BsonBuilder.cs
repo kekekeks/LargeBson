@@ -30,6 +30,8 @@ namespace LargeBson
         {
             if (token.Stream != null)
                 hs.Add(token.Stream);
+            if (token.Memory != null)
+                hs.Add(token.Memory);
             else if (token.Document != null)
                 foreach (var p in token.Document.Properties)
                     CollectDisposableStreams(hs, p.Token);
@@ -250,6 +252,7 @@ namespace LargeBson
             public long Long;
             public byte[] Data;
             public Stream Stream;
+            public IMemoryOwner<byte> Memory;
             public byte BinaryType;
             public Guid Guid;
             public bool Boolean;
@@ -273,6 +276,8 @@ namespace LargeBson
                     return BsonToken.FromData(data);
                 if (value is Stream stream)
                     return BsonToken.FromData(stream);
+                if (value is IMemoryOwner<byte> memory)
+                    return BsonToken.FromData(memory);
                 
                 var t = value.GetType();
                 if (t.IsPrimitive)
@@ -350,6 +355,13 @@ namespace LargeBson
                 Length = (int) (5 + stream.Length),
                 Type = BsonType.Binary
             };
+            
+            public static BsonToken FromData(IMemoryOwner<byte> memory) => new BsonToken
+            {
+                Memory = memory,
+                Length = (int) (5 + memory.Memory.Length),
+                Type = BsonType.Binary
+            };
 
             public static BsonToken FromGuid(Guid guid) => new BsonToken
             {
@@ -416,6 +428,9 @@ namespace LargeBson
                     else if (Stream != null)
                         return new BsonChunks(BinaryLen((int) Stream.Length, BinaryType),
                             new BsonChunk(Stream));
+                    else if(Memory != null)
+                        return new BsonChunks(BinaryLen((int)Memory.Memory.Length, BinaryType),
+                            new BsonChunk(Memory));
                 }
 
                 if (Type == BsonType.Null)

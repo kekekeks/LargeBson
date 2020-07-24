@@ -61,7 +61,20 @@ namespace LargeBson
                     off += read;
                     length -= read;
                 }
-                
+            }
+            
+            public async ValueTask ReadExact(Memory<byte> buffer)
+            {
+                var off = 0;
+                var length = buffer.Length;
+                while (length > 0)
+                {
+                    var read = await Stream.ReadAsync(buffer.Slice(off, length));
+                    if (read == 0)
+                        throw new EndOfStreamException();
+                    off += read;
+                    length -= read;
+                }
             }
             
             public async ValueTask<int> ReadInt()
@@ -221,6 +234,23 @@ namespace LargeBson
                         totalLen -= blen;
                         Add(targetList, targetObject, prop, name, data);
 
+                    }
+                    else if(prop.Type == typeof(IMemoryOwner<byte>))
+                    {
+                        var mem = MemoryPool<byte>.Shared.Rent(blen);
+                        var rsuccess = false;
+                        try
+                        {
+                            await ctx.ReadExact(mem.Memory);
+                            rsuccess = true;
+                        }
+                        finally
+                        {
+                            if(!rsuccess)
+                                mem.Dispose();
+                        }
+
+                        totalLen -= blen;
                     }
                     else
                         throw new ArgumentException("Unable to deserialize binary to " + prop.Type);
