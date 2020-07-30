@@ -25,7 +25,7 @@ namespace LargeBson
                 using var ctx = new Context(ms, typeInfoCache);
                 var (res, r) = await DeserializeCore(ctx, type, false);
                 success = true;
-                return new DeserializedBson(res, ms);
+                return new DeserializedBson(res, ms, ctx.Memories);
             }
             finally
             {
@@ -47,6 +47,7 @@ namespace LargeBson
             public byte[] Buffer = new byte[64];
             public SharedStreamHandler Share;
             public Stream Stream;
+            public List<IMemoryOwner<byte>> Memories;
             private readonly TypeInfoCache _typeInfoCache;
 
             public Context(Stream stream, TypeInfoCache typeInfoCache)
@@ -58,6 +59,13 @@ namespace LargeBson
 
             public TypeInformation GetType(Type t) => _typeInfoCache.Get(t);
 
+            public void AddMemory(IMemoryOwner<byte> mem)
+            {
+                if (Memories == null)
+                    Memories = new List<IMemoryOwner<byte>>();
+                Memories.Add(mem);
+            }
+            
             public async ValueTask ReadExact(byte[] buffer, int length)
             {
                 var off = 0;
@@ -230,7 +238,8 @@ namespace LargeBson
                     }
                     else if(writer.CurrentPropertyType == typeof(IMemoryOwner<byte>))
                     {
-                        var mem = MemoryPool<byte>.Shared.Rent(blen);
+                        var mem = new MemoryWrapper(MemoryPool<byte>.Shared.Rent(blen), blen);
+                        ctx.AddMemory(mem);
                         var rsuccess = false;
                         try
                         {
