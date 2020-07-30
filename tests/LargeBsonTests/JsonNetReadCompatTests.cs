@@ -23,6 +23,8 @@ namespace LargeBsonTests
             public byte[] TestBytes { get; set; }
             [JsonConverter(typeof(StreamToByteConverter))]
             public Stream TestStream { get; set; }
+            public Dictionary<string, string> StringDic { get; set; }
+            public IDictionary<int, string> IntDic { get; set; }
         }
 
         MemoryStream JsonNetSerialize(object o)
@@ -58,7 +60,15 @@ namespace LargeBsonTests
                     TestStream = new MemoryStream(new byte[] {3, 2, 1}),
                     TestInt = 1234,
                     TestLong = 12345,
-                    TestString = "Lalalalala"
+                    TestString = "Lalalalala",
+                    StringDic = new Dictionary<string, string>
+                    {
+                        ["Foo"] = "bar"
+                    },
+                    IntDic = new Dictionary<int, string>
+                    {
+                        [123] = "321"
+                    }
                 },
                 TestBytes = new byte[] {0, 1, 2, 3},
                 TestStream = new MemoryStream(new byte[] {3, 2, 1, 0}),
@@ -73,6 +83,14 @@ namespace LargeBsonTests
                     {
                         TestInt = 123
                     }
+                },
+                StringDic = new Dictionary<string, string>
+                {
+                    ["Foo2"] = "bar2"
+                },
+                IntDic = new Dictionary<int, string>
+                {
+                    [1234] = "5321"
                 }
 
             });

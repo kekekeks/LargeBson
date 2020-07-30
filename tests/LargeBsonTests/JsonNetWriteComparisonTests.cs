@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using LargeBson;
 using Newtonsoft.Json;
@@ -84,6 +85,33 @@ namespace LargeBsonTests
                 Data = blob
 
             }, () => new {Data = new MemoryStream(blob)});
+
+                        
+            Compare(new
+            {
+                Dic = new Dictionary<string, string>
+                {
+                    ["Foo"] = "Bar"
+                }
+            });
+            
+            Compare(new
+            {
+                Dic = new Dictionary<int, string>
+                {
+                    [123] = "Bar"
+                }
+            });
+
+            Compare(new Dictionary<int, string>
+            {
+                [123] = "Bar"
+            });
+
+            Compare(new Dictionary<string, string>
+            {
+                ["Foo"] = "Bar"
+            });
 
         }
     }

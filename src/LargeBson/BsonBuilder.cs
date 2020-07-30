@@ -133,6 +133,8 @@ namespace LargeBson
         
         static BsonDocument BuildDocument(object value, Context ctx)
         {
+            if (value is IDictionary dic)
+                return new BsonDocument(dic, ctx);
             if (value is IEnumerable || value == null || value is string || value.GetType().IsPrimitive ||
                 value is Guid)
                 throw new InvalidOperationException();
@@ -156,6 +158,22 @@ namespace LargeBson
                         Length += prop.Length;
                     }
 
+                Length += 5;
+            }
+
+            public BsonDocument(IDictionary dic, Context ctx)
+            {
+                foreach (var k in dic.Keys)
+                {
+                    if (!(k is string s))
+                        s = k.ToString();
+                    var plen = Encoding.UTF8.GetByteCount(s);
+                    var bprop = new byte[plen + 1];
+                    Encoding.UTF8.GetBytes(s, bprop.AsSpan().Slice(0, plen));
+                    var prop = new BsonProperty(bprop, BsonToken.Create(dic[k], ctx));
+                    Properties.Add(prop);
+                    Length += prop.Length;
+                }
                 Length += 5;
             }
         }
@@ -240,7 +258,6 @@ namespace LargeBson
             }
         }
 
-
         struct BsonProperty
         {
             public byte[] Name { get; }
@@ -296,6 +313,8 @@ namespace LargeBson
                 var t = value.GetType();
                 if (t.IsPrimitive)
                     throw new InvalidOperationException();
+                if (value is IDictionary dic)
+                    return FromDocument(new BsonDocument(dic, ctx));
                 if (value is IEnumerable en)
                     return BsonToken.FromArray(BsonArray.FromEnumerable(en, ctx));
                 return FromDocument(new BsonDocument(value, ctx));
