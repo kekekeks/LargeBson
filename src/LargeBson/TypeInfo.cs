@@ -55,7 +55,8 @@ namespace LargeBson
                     ListOfElementType = t;
                 }
                 else
-                    Properties = t.GetProperties().Select(p => new PropertyInfo(p, settings)).ToList();
+                    Properties = t.GetProperties().Where(p => !p.GetMethod.IsStatic)
+                        .Select(p => new PropertyInfo(p, settings)).ToList();
             }
         }
         
