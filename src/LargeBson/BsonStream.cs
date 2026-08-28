@@ -67,7 +67,7 @@ namespace LargeBson
             }
             return readTotal;
         }
-
+#if NETCOREAPP
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = new CancellationToken())
         {
             var readTotal = 0;
@@ -96,7 +96,8 @@ namespace LargeBson
             }
             return readTotal;
         }
-
+#endif
+        
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             var readTotal = 0;
@@ -110,7 +111,7 @@ namespace LargeBson
                     _currentChunk = _en.Current;
                 }
 
-                var read = await _currentChunk.ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken);
+                var read = await _currentChunk.ReadAsync(buffer, offset, count, cancellationToken);
                 if (read == 0)
                 {
                     _currentChunk.Dispose();

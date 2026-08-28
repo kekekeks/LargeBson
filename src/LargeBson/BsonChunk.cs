@@ -108,7 +108,7 @@ namespace LargeBson
             
             return 0;
         }
-
+#if NETCOREAPP
         public int Read(Span<byte> buffer)
         {
             var read = 0;
@@ -167,7 +167,17 @@ namespace LargeBson
 
             return new ValueTask<int>(Read(buffer.Span));
         }
+#endif
+        
+        public ValueTask<int> ReadAsync(byte[] buffer, int offset, int length, CancellationToken token)
+        {
+            if (_stream != null)
+                return new ValueTask<int>(_stream.ReadAsync(buffer, offset, length, token));
 
+            return new ValueTask<int>(Read(buffer, offset, length));
+        }
+
+        
         public void Dispose()
         {
             if (_stream != null)

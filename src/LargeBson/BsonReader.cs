@@ -129,7 +129,7 @@ namespace LargeBson
             public async ValueTask<Guid> ReadGuid()
             {
                 await ReadExact(Buffer, 16);
-                return new Guid(Buffer.AsSpan().Slice(0, 16));
+                return Compat.CreateGuid(Buffer.AsSpan().Slice(0, 16));
             }
 
             public void Dispose()

@@ -109,6 +109,7 @@ namespace LargeBson
             }
         }
 
+#if NETCOREAPP
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = new CancellationToken())
         {
             using (await _l.LockAsync())
@@ -138,6 +139,7 @@ namespace LargeBson
                 return read;
             }
         }
+#endif
 
         public override long Seek(long offset, SeekOrigin origin)
         {

@@ -83,7 +83,7 @@ namespace LargeBson
                     var mismatch = false;
                     for (var c = 0; c < p.CstringName.Length; c++)
                     {
-                        if (p.CstringName[c] != name[c])
+                        if (p.CstringName[c] != name.Array[name.Offset + c])
                         {
                             mismatch = true;
                             break;
