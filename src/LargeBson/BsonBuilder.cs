@@ -136,7 +136,7 @@ namespace LargeBson
             if (value is IDictionary dic)
                 return new BsonDocument(dic, ctx);
             if (value is IEnumerable || value == null || value is string || value.GetType().IsPrimitive ||
-                value is Guid)
+                value.GetType().IsEnum || value is Guid)
                 throw new InvalidOperationException();
             return new BsonDocument(value, ctx);
         }
@@ -311,6 +311,8 @@ namespace LargeBson
                     return BsonToken.FromData(memory);
                 
                 var t = value.GetType();
+                if (t.IsEnum)
+                    return FromEnum(value, t);
                 if (t.IsPrimitive)
                     throw new InvalidOperationException();
                 if (value is IDictionary dic)
@@ -321,6 +323,18 @@ namespace LargeBson
 
             }
             
+            static BsonToken FromEnum(object value, Type t)
+            {
+                var underlying = Enum.GetUnderlyingType(t);
+                if (underlying == typeof(long))
+                    return FromLong(Convert.ToInt64(value));
+                if (underlying == typeof(ulong))
+                    return FromLong(unchecked((long) Convert.ToUInt64(value)));
+                if (underlying == typeof(uint))
+                    return FromInt(unchecked((int) Convert.ToUInt32(value)));
+                return FromInt(Convert.ToInt32(value));
+            }
+
             public static BsonToken FromString(string s)
             {
                 if (s == null)

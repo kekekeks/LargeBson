@@ -198,6 +198,8 @@ namespace LargeBson
                     _dictionaryKey = byte.Parse(sname);
                 else if (_dictionaryKeyType == typeof(sbyte))
                     _dictionaryKey = sbyte.Parse(sname);
+                else if (_dictionaryKeyType.IsEnum)
+                    _dictionaryKey = Enum.Parse(_dictionaryKeyType, sname);
             }
         }
 
@@ -215,6 +217,8 @@ namespace LargeBson
 
         public void WriteValue(object value)
         {
+            if (value is int || value is long)
+                value = ConvertToEnum(value, CurrentPropertyType);
             if (_instance != null)
                 _property.Set(_instance, value);
             else if (_dictionary != null)
@@ -223,6 +227,14 @@ namespace LargeBson
                 _list.Add(value);
         }
         
+        static object ConvertToEnum(object value, Type targetType)
+        {
+            if (targetType == null)
+                return value;
+            var t = Nullable.GetUnderlyingType(targetType) ?? targetType;
+            return t.IsEnum ? Enum.ToObject(t, value) : value;
+        }
+
         public object CreateInstance()
         {
             if (_instance != null)
